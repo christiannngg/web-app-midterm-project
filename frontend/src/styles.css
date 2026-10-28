@@ -1,0 +1,25 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #1c1b29;
+  background: #f4f2ff;
+  --accent: #5b3df5;
+  --danger: #b3261e;
+}
+body { margin: 0; }
+main { max-width: 28rem; margin: 0 auto; padding: 2rem 1rem; }
+.auth-card {
+  display: grid; gap: 1rem; padding: 1.5rem; background: #fff;
+  border-radius: 12px; box-shadow: 0 2px 12px rgb(0 0 0 / 8%);
+}
+.auth-card h1 { margin: 0; font-size: 1.5rem; }
+.field { display: grid; gap: 0.25rem; }
+.field input { padding: 0.6rem; border: 1px solid #b9b5d6; border-radius: 8px; font: inherit; }
+.field input[aria-invalid="true"] { border-color: var(--danger); }
+.field-error, .form-error { color: var(--danger); font-size: 0.875rem; margin: 0; padding: 0; list-style: none; }
+.form-error { padding: 0.6rem; background: #fdecea; border-radius: 8px; }
+.role-picker { display: grid; gap: 0.5rem; border: 1px solid #b9b5d6; border-radius: 8px; }
+button { font: inherit; padding: 0.6rem 1rem; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
+button:disabled { opacity: 0.6; cursor: wait; }
+button:focus-visible, input:focus-visible { outline: 3px solid #ffb703; outline-offset: 2px; }
+.link-button { background: none; color: var(--accent); padding: 0; text-decoration: underline; }
+.switch-mode { margin: 0; text-align: center; }

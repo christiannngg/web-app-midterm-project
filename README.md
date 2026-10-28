@@ -6,7 +6,8 @@ server pushes timed multiple-choice questions to everyone over WebSockets.
 **Stack:** Django + DRF + Channels (Daphne) + Redis + Postgres | React + TypeScript (strict) + Vite + Zustand
 
 ## Layout
-```
+
+```txt
 backend/    Django project (config/, apps/accounts, apps/quizzes, apps/games)
 frontend/   React + TS app (Vite)
 docs/       Architecture notes, WS protocol
@@ -14,6 +15,7 @@ docker-compose.yml   Postgres + Redis for local dev
 ```
 
 ## Quick start
+
 ```bash
 cp .env.example .env
 docker compose up -d            # Postgres + Redis
@@ -33,6 +35,7 @@ npm run dev                     # http://localhost:5173
 ```
 
 ## Checks
+
 ```bash
 cd backend && ruff check . && pytest
 cd frontend && npm run typecheck && npm run lint

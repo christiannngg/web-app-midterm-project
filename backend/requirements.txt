@@ -1,14 +1,14 @@
-Django>=5.1,<5.3
-djangorestframework>=3.15
-djangorestframework-simplejwt>=5.3
-django-cors-headers>=4.4
-django-environ>=0.11
-channels>=4.1
-channels-redis>=4.2
-daphne>=4.1
-psycopg[binary]>=3.2
+Django==6.1.2
+djangorestframework==3.18.3
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.9.0
+django-environ==0.14.0
+channels==4.3.2
+channels-redis==4.3.0
+daphne==4.2.3
+psycopg[binary]==3.3.6
 # dev / test
-pytest>=8.3
-pytest-django>=4.9
-pytest-asyncio>=0.24
-ruff>=0.6
+pytest==9.1.1
+pytest-django==4.14.0
+pytest-asyncio==1.4.0
+ruff==0.17.2
