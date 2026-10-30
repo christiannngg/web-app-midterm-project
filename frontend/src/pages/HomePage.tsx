@@ -13,6 +13,11 @@ export default function HomePage() {
           <p>
             Signed in as <strong>{user.username}</strong> ({user.role}).
           </p>
+          {user.role === "host" && (
+            <p>
+              <Link to="/quizzes">My quizzes</Link>
+            </p>
+          )}
           <button type="button" onClick={signOut}>
             Sign out
           </button>
