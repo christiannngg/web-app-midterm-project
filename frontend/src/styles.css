@@ -61,3 +61,15 @@ a.button:focus-visible { outline: 3px solid #ffb703; outline-offset: 2px; }
 .badge.published { background: #d7f2de; color: #14532d; }
 .tag { display: inline-block; margin-right: 0.35rem; padding: 0 0.45rem; border-radius: 6px; background: #f0eefc; }
 .pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; gap: 1rem; }
+
+/* ---- lobbies (Phase 3) ---- */
+main.lobby { display: grid; gap: 1rem; align-content: start; }
+.join-code { text-align: center; padding: 1rem; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgb(0 0 0 / 8%); }
+.join-code p { margin: 0; }
+.join-code-value { font-size: 2.75rem; font-weight: 700; letter-spacing: 0.4em; padding-left: 0.4em; font-variant-numeric: tabular-nums; color: var(--accent); }
+.player-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
+.player { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.6rem 0.9rem; background: #fff; border-radius: 10px; box-shadow: 0 1px 6px rgb(0 0 0 / 8%); }
+.player.offline { opacity: 0.6; }
+.player-name { overflow-wrap: anywhere; font-weight: 600; }
+.player button { padding: 0.3rem 0.7rem; font-size: 0.85rem; }
+.lobby h2 { margin: 0.5rem 0 0; font-size: 1.15rem; }

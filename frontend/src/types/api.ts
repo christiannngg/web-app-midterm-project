@@ -1,3 +1,5 @@
+import type { GameStatus } from "./ws";
+
 export interface TokenPair {
   access: string;
   refresh: string;
@@ -101,4 +103,26 @@ export interface QuizInput {
 export interface QuizListParams {
   search?: string;
   page?: number;
+}
+
+// ---- Games (backend apps/games/serializers.py) -------------------------------------------
+
+/** Public lobby info: `POST /games/` (host) and `GET /games/<code>/` (anyone). */
+export interface Game {
+  id: number;
+  /** 6-character join code, e.g. "K7M2QX". */
+  code: string;
+  status: GameStatus;
+  /** Host closed the lobby to new joins. */
+  is_locked: boolean;
+  quiz: number;
+  quiz_title: string;
+  created_at: string;
+}
+
+/** `POST /games/join/`. The token authenticates the player's WebSocket (see utils/playerSession.ts). */
+export interface JoinGameResponse {
+  code: string;
+  player: { id: number; nickname: string };
+  player_token: string;
 }

@@ -27,7 +27,7 @@ export default function App() {
       <Route path="/quizzes" element={<RequireHost><QuizListPage /></RequireHost>} />
       <Route path="/quizzes/new" element={<RequireHost><QuizBuilderPage /></RequireHost>} />
       <Route path="/quizzes/:id/edit" element={<RequireHost><QuizBuilderPage /></RequireHost>} />
-      <Route path="/host/:code" element={<HostPage />} />
+      <Route path="/host/:code" element={<RequireHost><HostPage /></RequireHost>} />
       <Route path="/play/:code" element={<PlayPage />} />
     </Routes>
   );

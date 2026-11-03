@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { deleteQuiz, listQuizzes } from "@/api/quizzes";
 import { normalizeError } from "@/api/client";
+import { createGame } from "@/api/games";
 import QuizList from "@/components/quiz/QuizList";
 import type { Paginated, QuizSummary } from "@/types/api";
 
@@ -9,6 +10,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 // Smart page: owns search/pagination state and talks to the API; <QuizList> just renders.
 export default function QuizListPage() {
+  const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -16,6 +18,7 @@ export default function QuizListPage() {
   const [data, setData] = useState<Paginated<QuizSummary> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const [hostingId, setHostingId] = useState<number | null>(null);
 
   // Wait for a pause in typing before searching, and start again from page 1.
   useEffect(() => {
@@ -57,6 +60,20 @@ export default function QuizListPage() {
     }
   };
 
+  const handleHost = async (quiz: QuizSummary) => {
+    setHostingId(quiz.id);
+    setError(undefined);
+    try {
+      const game = await createGame(quiz.id);
+      navigate(`/host/${game.code}`);
+    } catch (err) {
+      const body = normalizeError(err);
+      // A rejected quiz comes back as a field error; show its specific message, not the generic one.
+      setError(body.fields?.quiz?.[0] ?? body.detail);
+      setHostingId(null);
+    }
+  };
+
   return (
     <main className="wide">
       <header className="page-header">
@@ -85,7 +102,12 @@ export default function QuizListPage() {
       {loading && <p role="status">Loading…</p>}
 
       {data && data.results.length > 0 && (
-        <QuizList quizzes={data.results} onDelete={(quiz) => void handleDelete(quiz)} />
+        <QuizList
+          quizzes={data.results}
+          onDelete={(quiz) => void handleDelete(quiz)}
+          onHost={(quiz) => void handleHost(quiz)}
+          hostingId={hostingId}
+        />
       )}
       {data && data.results.length === 0 && !loading && !error && (
         <p className="muted">

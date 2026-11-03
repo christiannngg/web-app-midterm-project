@@ -1,17 +1,177 @@
+import json
+import logging
+from typing import Any
+
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+
+from ..schemas import (
+    CLOSE_KICKED,
+    ClientAction,
+    ProtocolError,
+    ServerEvent,
+    parse_client_message,
+)
+from ..services import lobby
+
+logger = logging.getLogger(__name__)
+
+
+def group_name(code: str) -> str:
+    """One Redis group per game. Every event for a game goes to this group and nowhere else."""
+    return f"game_{code}"
+
+
+def _int_field(payload: dict[str, Any], key: str) -> int:
+    value = payload.get(key)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ProtocolError("bad_request", f"{key} must be an integer.")
+    return value
 
 
 class GameConsumer(AsyncJsonWebsocketConsumer):
-    """One socket per participant; all sockets for a game share group `game_<code>`.
+    """One socket per participant; all sockets for a game share the group `game_<code>`.
 
-    TODO:
-      connect():    reject anonymous (close 4401), validate game code exists, group_add
-      receive_json: validate payload against schemas.ClientAction, dispatch to handlers
-      handlers:     lobby_join, answer_submit (-> services.scoring), host_start, host_next
-      group events: broadcast_event(self, event) -> send_json to client
-      disconnect(): group_discard, mark player disconnected
-    Wrap DB work in try/except and send an ERROR event instead of crashing the socket.
+    Handshake: the browser connects to `ws/game/<code>/?token=...` with either the host's JWT
+    or a player token from `POST /api/games/join/`. A bad handshake is accepted and then closed
+    with an application code (4401/4403/4404/4410) — closing *before* accept would reach the
+    browser as an opaque HTTP 403, and the UI couldn't tell "kicked" from "wrong code".
+
+    Phase 3 handles the lobby (LOBBY_JOIN, HOST_KICK, HOST_LOCK, HOST_START).
+    Phase 4 adds ANSWER_SUBMIT / HOST_NEXT and the question timer.
     """
 
-    async def connect(self):
-        await self.close(code=4501)  # not implemented yet
+    # Defaults so disconnect() is safe even when connect() bailed out early.
+    code: str = ""
+    group: str = ""
+    role: str | None = None
+    player_id: int | None = None
+    in_group = False
+    in_lobby = False  # the player has sent LOBBY_JOIN and is marked connected
+
+    # ---- lifecycle ---------------------------------------------------------------------
+
+    async def connect(self) -> None:
+        self.code = self.scope["url_route"]["kwargs"]["code"]
+        self.group = group_name(self.code)
+        try:
+            identity = await database_sync_to_async(lobby.resolve_identity)(
+                self.code, self.scope.get("user"), self.scope.get("token")
+            )
+        except lobby.ConnectionRefused as refused:
+            await self.accept()
+            await self.close(code=refused.close_code, reason=refused.reason)
+            return
+
+        self.role = identity.role
+        self.player_id = identity.player_id
+        await self.channel_layer.group_add(self.group, self.channel_name)
+        self.in_group = True
+        await self.accept()
+        await self._send_lobby_state_to_me()
+
+    async def disconnect(self, code: int) -> None:
+        if self.in_group:
+            await self.channel_layer.group_discard(self.group, self.channel_name)
+        if self.in_lobby and self.player_id is not None:
+            self.in_lobby = False
+            await database_sync_to_async(lobby.set_connected)(self.player_id, False)
+            await self._broadcast_lobby_state()
+
+    # ---- incoming ----------------------------------------------------------------------
+
+    async def receive(self, text_data=None, bytes_data=None, **kwargs) -> None:
+        try:
+            content = json.loads(text_data or "")
+        except ValueError:
+            await self._send_error("bad_request", "Messages must be valid JSON.")
+            return
+        await self.receive_json(content)
+
+    async def receive_json(self, content: Any, **kwargs) -> None:
+        handlers = {
+            ClientAction.LOBBY_JOIN: self._on_lobby_join,
+            ClientAction.HOST_KICK: self._on_host_kick,
+            ClientAction.HOST_LOCK: self._on_host_lock,
+            ClientAction.HOST_START: self._on_host_start,
+            ClientAction.ANSWER_SUBMIT: self._not_yet,
+            ClientAction.HOST_NEXT: self._not_yet,
+        }
+        try:
+            action, payload = parse_client_message(content)
+            await handlers[action](payload)
+        except ProtocolError as err:
+            await self._send_error(err.code, err.detail)
+        except Exception:  # never let one bad message take the socket down
+            logger.exception("Unhandled error in game %s (%s)", self.code, self.role)
+            await self._send_error("server_error", "Something went wrong on our side.")
+
+    # ---- handlers ----------------------------------------------------------------------
+
+    async def _on_lobby_join(self, payload: dict[str, Any]) -> None:
+        self._require_role("player")
+        assert self.player_id is not None
+        await database_sync_to_async(lobby.set_connected)(self.player_id, True)
+        self.in_lobby = True
+        await self._broadcast_lobby_state()
+
+    async def _on_host_kick(self, payload: dict[str, Any]) -> None:
+        self._require_role("host")
+        player_id = _int_field(payload, "playerId")
+        if not await database_sync_to_async(lobby.kick_player)(self.code, player_id):
+            raise ProtocolError("not_found", "No such player in this game.")
+        # Tell the kicked player's socket to close itself, then refresh everyone's roster.
+        await self.channel_layer.group_send(
+            self.group, {"type": "player.kicked", "player_id": player_id}
+        )
+        await self._broadcast_lobby_state()
+
+    async def _on_host_lock(self, payload: dict[str, Any]) -> None:
+        self._require_role("host")
+        locked = payload.get("locked")
+        if not isinstance(locked, bool):
+            raise ProtocolError("bad_request", "locked must be true or false.")
+        await database_sync_to_async(lobby.set_locked)(self.code, locked)
+        await self._broadcast_lobby_state()
+
+    async def _on_host_start(self, payload: dict[str, Any]) -> None:
+        self._require_role("host")
+        await database_sync_to_async(lobby.start_game)(self.code)
+        await self._broadcast_lobby_state()  # everyone sees status = IN_PROGRESS
+        # Phase 4: start the server timer and broadcast the first QUESTION_PUSH here.
+
+    async def _not_yet(self, payload: dict[str, Any]) -> None:
+        raise ProtocolError("not_implemented", "That action arrives with live gameplay.")
+
+    # ---- group events (delivered to every socket in the group) -------------------------
+
+    async def broadcast_event(self, event: dict[str, Any]) -> None:
+        await self.send_json(event["message"])
+
+    async def player_kicked(self, event: dict[str, Any]) -> None:
+        if event["player_id"] == self.player_id:
+            self.in_lobby = False  # the kick already marked them disconnected
+            await self.close(code=CLOSE_KICKED, reason="The host removed you from this game.")
+
+    # ---- helpers -----------------------------------------------------------------------
+
+    def _require_role(self, role: str) -> None:
+        if self.role != role:
+            raise ProtocolError("permission_denied", f"Only the {role} can do that.")
+
+    async def _lobby_state_message(self) -> dict[str, Any]:
+        payload = await database_sync_to_async(lobby.lobby_snapshot)(self.code)
+        return {"type": ServerEvent.LOBBY_STATE.value, "payload": payload}
+
+    async def _send_lobby_state_to_me(self) -> None:
+        await self.send_json(await self._lobby_state_message())
+
+    async def _broadcast_lobby_state(self) -> None:
+        await self.channel_layer.group_send(
+            self.group, {"type": "broadcast.event", "message": await self._lobby_state_message()}
+        )
+
+    async def _send_error(self, code: str, detail: str) -> None:
+        await self.send_json(
+            {"type": ServerEvent.ERROR.value, "payload": {"code": code, "detail": detail}}
+        )

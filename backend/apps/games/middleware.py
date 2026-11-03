@@ -1,4 +1,11 @@
-"""Authenticate WebSocket connections with a JWT passed as ?token=<access>."""
+"""Read the `?token=` query parameter of a WebSocket connection.
+
+Two kinds of token arrive here:
+  * a SimpleJWT access token (hosts)  -> `scope["user"]` is the User
+  * a signed player token (players)   -> not a JWT, so `scope["user"]` stays anonymous
+In both cases the raw string is kept in `scope["token"]`; the consumer decides what it means
+for the game being joined (see services/lobby.resolve_identity).
+"""
 from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
@@ -24,4 +31,5 @@ class JWTAuthMiddleware(BaseMiddleware):
         query = parse_qs(scope.get("query_string", b"").decode())
         token = (query.get("token") or [None])[0]
         scope["user"] = await _get_user(token) if token else AnonymousUser()
+        scope["token"] = token
         return await super().__call__(scope, receive, send)

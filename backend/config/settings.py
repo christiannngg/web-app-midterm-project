@@ -118,6 +118,16 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localho
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [env("REDIS_URL", default="redis://localhost:6379/0")]},
+        "CONFIG": {
+            "hosts": [
+                {
+                    "address": env("REDIS_URL", default="redis://localhost:6379/0"),
+                    # channels_redis idles on a blocking read (up to 5 s). redis-py >= 7 defaults
+                    # to a 5 s socket timeout, so every idle WebSocket crashed with
+                    # "Timeout reading from localhost:6379". Keep this above that 5 s.
+                    "socket_timeout": 30,
+                }
+            ]
+        },
     }
 }

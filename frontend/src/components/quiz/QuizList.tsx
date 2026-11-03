@@ -4,10 +4,14 @@ import type { QuizSummary } from "@/types/api";
 interface Props {
   quizzes: QuizSummary[];
   onDelete: (quiz: QuizSummary) => void;
+  /** Start a lobby for a published quiz. */
+  onHost: (quiz: QuizSummary) => void;
+  /** Quiz whose lobby is being created right now (disables its Host button). */
+  hostingId?: number | null;
 }
 
-/** Presentational: one card per quiz with edit/delete actions. */
-export default function QuizList({ quizzes, onDelete }: Props) {
+/** Presentational: one card per quiz with host/edit/delete actions. */
+export default function QuizList({ quizzes, onDelete, onHost, hostingId }: Props) {
   return (
     <ul className="quiz-list">
       {quizzes.map((quiz) => (
@@ -35,6 +39,11 @@ export default function QuizList({ quizzes, onDelete }: Props) {
             </p>
           </div>
           <div className="toolbar">
+            {quiz.is_published && (
+              <button type="button" onClick={() => onHost(quiz)} disabled={hostingId === quiz.id}>
+                Host game<span className="sr-only"> {quiz.title}</span>
+              </button>
+            )}
             <Link className="button secondary" to={`/quizzes/${quiz.id}/edit`}>
               Edit<span className="sr-only"> {quiz.title}</span>
             </Link>

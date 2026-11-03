@@ -1,6 +1,8 @@
 from rest_framework.routers import DefaultRouter
 
+from .views import GameSessionViewSet
+
 router = DefaultRouter()
-# TODO: router.register("games", GameSessionViewSet, basename="game")
+router.register("games", GameSessionViewSet, basename="game")
 
 urlpatterns = router.urls

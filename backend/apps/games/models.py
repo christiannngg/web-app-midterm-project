@@ -1,8 +1,11 @@
 """Live game state persisted in Postgres.
 
 GameSession : quiz FK->Quiz, host FK->User, code (unique 6-char join code),
-              status (LOBBY|IN_PROGRESS|FINISHED), current_question_index, started_at, ended_at
-Player      : session FK->GameSession, user FK->User (null for guests), nickname, score
+              status (LOBBY|IN_PROGRESS|FINISHED), is_locked (host closed the lobby to new
+              joins), current_question_index, started_at, ended_at
+Player      : session FK->GameSession, user FK->User (null for guests), nickname, score,
+              is_connected (socket open), is_kicked (banned by the host; the row is kept so
+              the nickname and token stay claimed and cannot rejoin)
 Answer      : player FK->Player, question FK->Question, choice FK->Choice, answered_at,
               is_correct, points_awarded; one answer per (player, question)
 
@@ -36,6 +39,9 @@ class GameSession(models.Model):
     )
     code = models.CharField(max_length=JOIN_CODE_LENGTH, unique=True, default=generate_join_code)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.LOBBY)
+    is_locked = models.BooleanField(
+        default=False, help_text="Host closed the lobby: no new players can join."
+    )
     current_question_index = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
@@ -60,7 +66,10 @@ class Player(models.Model):
     )
     nickname = models.CharField(max_length=30)
     score = models.PositiveIntegerField(default=0)
-    is_connected = models.BooleanField(default=True)
+    is_connected = models.BooleanField(default=False)
+    is_kicked = models.BooleanField(
+        default=False, help_text="Banned by the host. Kept as a row so they cannot rejoin."
+    )
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
