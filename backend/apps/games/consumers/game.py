@@ -12,7 +12,7 @@ from ..schemas import (
     ServerEvent,
     parse_client_message,
 )
-from ..services import lobby
+from ..services import gameplay, lobby, scoring, timer
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,9 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
     browser as an opaque HTTP 403, and the UI couldn't tell "kicked" from "wrong code".
 
     Phase 3 handles the lobby (LOBBY_JOIN, HOST_KICK, HOST_LOCK, HOST_START).
-    Phase 4 adds ANSWER_SUBMIT / HOST_NEXT and the question timer.
+    Phase 4 adds ANSWER_SUBMIT / HOST_NEXT. The question clock itself is not here: HOST_START
+    hands the game to `services.timer`, which broadcasts QUESTION_PUSH / SCORE_SYNC / GAME_END
+    into the same group.
     """
 
     # Defaults so disconnect() is safe even when connect() bailed out early.
@@ -77,6 +79,10 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
             self.in_lobby = False
             await database_sync_to_async(lobby.set_connected)(self.player_id, False)
             await self._broadcast_lobby_state()
+            # The last player we were waiting on may be the one who just left.
+            runner = timer.get_runner(self.code)
+            if runner is not None and runner.phase == "question":
+                await self._close_early_if_all_answered(runner)
 
     # ---- incoming ----------------------------------------------------------------------
 
@@ -94,8 +100,8 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
             ClientAction.HOST_KICK: self._on_host_kick,
             ClientAction.HOST_LOCK: self._on_host_lock,
             ClientAction.HOST_START: self._on_host_start,
-            ClientAction.ANSWER_SUBMIT: self._not_yet,
-            ClientAction.HOST_NEXT: self._not_yet,
+            ClientAction.ANSWER_SUBMIT: self._on_answer_submit,
+            ClientAction.HOST_NEXT: self._on_host_next,
         }
         try:
             action, payload = parse_client_message(content)
@@ -138,10 +144,37 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         self._require_role("host")
         await database_sync_to_async(lobby.start_game)(self.code)
         await self._broadcast_lobby_state()  # everyone sees status = IN_PROGRESS
-        # Phase 4: start the server timer and broadcast the first QUESTION_PUSH here.
+        timer.start_runner(self.code)  # pushes the first question
 
-    async def _not_yet(self, payload: dict[str, Any]) -> None:
-        raise ProtocolError("not_implemented", "That action arrives with live gameplay.")
+    async def _on_answer_submit(self, payload: dict[str, Any]) -> None:
+        self._require_role("player")
+        assert self.player_id is not None
+        question_id = _int_field(payload, "questionId")
+        choice_id = _int_field(payload, "choiceId")
+        await database_sync_to_async(scoring.submit_answer)(
+            player_id=self.player_id, question_id=question_id, choice_id=choice_id
+        )
+        answered, total = await database_sync_to_async(gameplay.answer_progress)(self.code)
+        await self.channel_layer.group_send(
+            self.group,
+            {
+                "type": "broadcast.event",
+                "message": {
+                    "type": ServerEvent.ANSWER_PROGRESS.value,
+                    "payload": {"answered": answered, "total": total},
+                },
+            },
+        )
+        runner = timer.get_runner(self.code)
+        if runner is not None and total > 0 and answered >= total:
+            runner.finish_early()
+
+    async def _on_host_next(self, payload: dict[str, Any]) -> None:
+        self._require_role("host")
+        runner = timer.get_runner(self.code)
+        if runner is None:
+            raise ProtocolError("invalid_state", "The game is not running.")
+        runner.skip()
 
     # ---- group events (delivered to every socket in the group) -------------------------
 
@@ -158,6 +191,11 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
     def _require_role(self, role: str) -> None:
         if self.role != role:
             raise ProtocolError("permission_denied", f"Only the {role} can do that.")
+
+    async def _close_early_if_all_answered(self, runner: timer.GameRunner) -> None:
+        answered, total = await database_sync_to_async(gameplay.answer_progress)(self.code)
+        if total > 0 and answered >= total:
+            runner.finish_early()
 
     async def _lobby_state_message(self) -> dict[str, Any]:
         payload = await database_sync_to_async(lobby.lobby_snapshot)(self.code)

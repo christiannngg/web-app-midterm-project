@@ -2,7 +2,8 @@
 
 GameSession : quiz FK->Quiz, host FK->User, code (unique 6-char join code),
               status (LOBBY|IN_PROGRESS|FINISHED), is_locked (host closed the lobby to new
-              joins), current_question_index, started_at, ended_at
+              joins), current_question_index, question_started_at (set while a
+              question is open, NULL between questions), started_at, ended_at
 Player      : session FK->GameSession, user FK->User (null for guests), nickname, score,
               is_connected (socket open), is_kicked (banned by the host; the row is kept so
               the nickname and token stay claimed and cannot rejoin)
@@ -43,6 +44,11 @@ class GameSession(models.Model):
         default=False, help_text="Host closed the lobby: no new players can join."
     )
     current_question_index = models.PositiveSmallIntegerField(default=0)
+    question_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the current question opened. NULL = no question is accepting answers.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)

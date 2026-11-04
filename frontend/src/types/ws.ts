@@ -25,8 +25,16 @@ export interface QuestionPayload {
   timeLimitSeconds: number;
   /** Server epoch ms when the question opened; clients derive remaining time from this. */
   startedAtMs: number;
+  /** Server epoch ms when this message was built; `serverNowMs - Date.now()` is the clock offset. */
+  serverNowMs: number;
   index: number;
   total: number;
+}
+
+/** Points one player earned on the question that just closed (0 for wrong or no answer). */
+export interface Award {
+  playerId: number;
+  points: number;
 }
 
 export interface LobbyStatePayload {
@@ -52,7 +60,13 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: "LOBBY_STATE"; payload: LobbyStatePayload }
   | { type: "QUESTION_PUSH"; payload: QuestionPayload }
-  | { type: "SCORE_SYNC"; payload: { leaderboard: Player[]; correctChoiceId: number | null } }
+  /** After each accepted answer: how many have answered out of how many are connected. */
+  | { type: "ANSWER_PROGRESS"; payload: { answered: number; total: number } }
+  /** The question closed: reveal the answer and the new standings. */
+  | {
+      type: "SCORE_SYNC";
+      payload: { leaderboard: Player[]; correctChoiceId: number | null; awarded: Award[] };
+    }
   | { type: "GAME_END"; payload: { leaderboard: Player[] } }
   | { type: "ERROR"; payload: { code: string; detail: string } };
 

@@ -1,4 +1,5 @@
 import type {
+  Award,
   Choice,
   GameStatus,
   LobbyPlayer,
@@ -31,6 +32,9 @@ const isLobbyPlayer = (v: unknown): v is LobbyPlayer =>
   isNumber(v.score) &&
   isBoolean(v.connected);
 
+const isAward = (v: unknown): v is Award =>
+  isObject(v) && isNumber(v.playerId) && isNumber(v.points);
+
 const isChoice = (v: unknown): v is Choice => isObject(v) && isNumber(v.id) && isString(v.text);
 
 const isQuestionPayload = (v: unknown): v is QuestionPayload =>
@@ -40,6 +44,7 @@ const isQuestionPayload = (v: unknown): v is QuestionPayload =>
   isArrayOf(v.choices, isChoice) &&
   isNumber(v.timeLimitSeconds) &&
   isNumber(v.startedAtMs) &&
+  isNumber(v.serverNowMs) &&
   isNumber(v.index) &&
   isNumber(v.total);
 
@@ -70,14 +75,23 @@ export function parseServerMessage(raw: unknown): ServerMessage | null {
       return null;
     case "QUESTION_PUSH":
       return isQuestionPayload(p) ? { type: "QUESTION_PUSH", payload: p } : null;
+    case "ANSWER_PROGRESS":
+      return isNumber(p.answered) && isNumber(p.total)
+        ? { type: "ANSWER_PROGRESS", payload: { answered: p.answered, total: p.total } }
+        : null;
     case "SCORE_SYNC":
       if (
         isArrayOf(p.leaderboard, isPlayer) &&
+        isArrayOf(p.awarded, isAward) &&
         (p.correctChoiceId === null || isNumber(p.correctChoiceId))
       ) {
         return {
           type: "SCORE_SYNC",
-          payload: { leaderboard: p.leaderboard, correctChoiceId: p.correctChoiceId },
+          payload: {
+            leaderboard: p.leaderboard,
+            correctChoiceId: p.correctChoiceId,
+            awarded: p.awarded,
+          },
         };
       }
       return null;

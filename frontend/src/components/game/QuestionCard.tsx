@@ -1,7 +1,75 @@
-// Presentational (dumb) component: props in, JSX out, no data fetching.
-// TODO: replace Record<string, never> with the real props interface.
-export type QuestionCardProps = Record<string, never>;
+import type { QuestionPayload } from "@/types/ws";
 
-export default function QuestionCard(_props: QuestionCardProps) {
-  return null;
+export interface QuestionCardProps {
+  question: QuestionPayload;
+  /** The choice this viewer picked, if any. */
+  selectedChoiceId: number | null;
+  /** Known once the question has closed. */
+  correctChoiceId: number | null;
+  /** The question is over and the answer is on screen. */
+  revealed: boolean;
+  /** Called when a choice is tapped. Omit it for a read-only view (the host's screen). */
+  onSelect?: (choiceId: number) => void;
+  /** Players can't pick once they've answered or time is up. */
+  locked?: boolean;
+}
+
+const LETTERS = ["A", "B", "C", "D", "E", "F"];
+
+// Presentational (dumb) component: props in, JSX out, no data fetching.
+export default function QuestionCard({
+  question,
+  selectedChoiceId,
+  correctChoiceId,
+  revealed,
+  onSelect,
+  locked = false,
+}: QuestionCardProps) {
+  return (
+    <section className="question-live" aria-labelledby="question-text">
+      <p className="meta">
+        Question {question.index + 1} of {question.total}
+      </p>
+      <h2 id="question-text">{question.text}</h2>
+      <ul className="answer-grid">
+        {question.choices.map((choice, i) => {
+          const picked = choice.id === selectedChoiceId;
+          const isCorrect = revealed && choice.id === correctChoiceId;
+          const isWrongPick = revealed && picked && choice.id !== correctChoiceId;
+          const state = isCorrect ? "correct" : isWrongPick ? "wrong" : picked ? "picked" : "idle";
+          const label = (
+            <>
+              <span className="answer-letter" aria-hidden="true">
+                {LETTERS[i] ?? i + 1}
+              </span>
+              <span className="answer-text">{choice.text}</span>
+              {isCorrect && <span className="answer-flag">✓ Correct</span>}
+              {isWrongPick && <span className="answer-flag">✗ Your answer</span>}
+              {picked && !revealed && <span className="answer-flag">Locked in</span>}
+            </>
+          );
+          return (
+            <li key={choice.id}>
+              {onSelect ? (
+                <button
+                  type="button"
+                  className="answer"
+                  data-state={state}
+                  aria-pressed={picked}
+                  disabled={locked || revealed}
+                  onClick={() => onSelect(choice.id)}
+                >
+                  {label}
+                </button>
+              ) : (
+                <div className="answer" data-state={state}>
+                  {label}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }

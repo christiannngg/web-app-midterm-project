@@ -10,7 +10,7 @@ from apps.games.middleware import JWTAuthMiddleware
 from apps.games.models import GameSession, Player
 from apps.games.routing import websocket_urlpatterns
 from apps.games.tokens import make_player_token
-from apps.quizzes.models import Quiz
+from apps.quizzes.models import Choice, Question, Quiz
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -23,6 +23,9 @@ application = JWTAuthMiddleware(URLRouter(websocket_urlpatterns))
 def make_game(username: str) -> tuple[User, GameSession]:
     host = User.objects.create_user(username, password="pw-for-tests-123", role=User.Role.HOST)
     quiz = Quiz.objects.create(owner=host, title=f"{username}'s quiz", is_published=True)
+    question = Question.objects.create(quiz=quiz, text="2 + 2?", order=0, time_limit_s=30)
+    Choice.objects.create(question=question, text="4", is_correct=True)
+    Choice.objects.create(question=question, text="5")
     return host, GameSession.objects.create(quiz=quiz, host=host)
 
 
@@ -297,6 +300,7 @@ async def test_start_needs_a_connected_player_then_flips_status_once(lobby):
     await send(host, "HOST_START")
     for comm in (host, ann):
         assert (await lobby_state(comm))["status"] == "IN_PROGRESS"
+        assert (await comm.receive_json_from(timeout=2))["type"] == "QUESTION_PUSH"  # Phase 4
     fresh = await database_sync_to_async(GameSession.objects.get)(pk=game.pk)
     assert fresh.started_at is not None
 
@@ -323,9 +327,27 @@ async def test_bad_messages_get_an_error_and_the_socket_survives(lobby):
     assert await error_code(host) == "unknown_action"
     await host.send_json_to({"type": "HOST_LOCK", "payload": "nope"})
     assert await error_code(host) == "bad_request"
-    await send(host, "HOST_NEXT")  # real action, not built yet
-    assert await error_code(host) == "not_implemented"
+    await send(host, "HOST_NEXT")  # real action, but there is no running game to advance
+    assert await error_code(host) == "invalid_state"
 
     await send(host, "HOST_LOCK", {"locked": True})  # still alive and well
     assert (await lobby_state(host))["locked"] is True
     await host.disconnect()
+
+
+async def test_start_refuses_a_quiz_with_no_questions(lobby):
+    game = lobby["game"]
+    await database_sync_to_async(game.quiz.questions.all().delete)()
+    _, ann_token = await database_sync_to_async(make_player)(game, "Ann")
+    host = await open_socket(game.code, lobby["host_token"])
+    await lobby_state(host)
+    ann = await open_socket(game.code, ann_token)
+    await lobby_state(ann)
+    await send(ann, "LOBBY_JOIN")
+    await lobby_state(host)
+    await lobby_state(ann)
+
+    await send(host, "HOST_START")
+    assert await error_code(host) == "empty_quiz"
+    for comm in (host, ann):
+        await comm.disconnect()

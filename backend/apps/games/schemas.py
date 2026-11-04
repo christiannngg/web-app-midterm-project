@@ -7,11 +7,16 @@ Client -> Server:
     HOST_KICK      {playerId: int}            host: ban a player from this game
     HOST_LOCK      {locked: bool}             host: open/close the lobby to new joins
     HOST_START     {}                         host: leave the lobby and begin the game
-    ANSWER_SUBMIT  {questionId, choiceId}     player            (Phase 4)
-    HOST_NEXT      {}                         host              (Phase 4)
+    ANSWER_SUBMIT  {questionId, choiceId}     player: answer the open question (once)
+    HOST_NEXT      {}                         host: end the open question / skip the results pause
 Server -> Client:
     LOBBY_STATE    {players: [...], status, locked}   sent on connect and after every change
-    QUESTION_PUSH / SCORE_SYNC / GAME_END              (Phase 4)
+    QUESTION_PUSH  {id, text, choices: [{id, text}], timeLimitSeconds, startedAtMs,
+                    serverNowMs, index, total}        a question opened; never includes the answer
+    ANSWER_PROGRESS {answered, total}                 after each accepted answer
+    SCORE_SYNC     {leaderboard: [{id, nickname, score}], correctChoiceId,
+                    awarded: [{playerId, points}]}    the question closed; reveal + new scores
+    GAME_END       {leaderboard: [...]}               final standings (podium = first three)
     ERROR          {code, detail}             the socket stays open
 
 Close codes (the browser sees these in `CloseEvent.code`):
@@ -34,6 +39,7 @@ class ClientAction(StrEnum):
 class ServerEvent(StrEnum):
     LOBBY_STATE = "LOBBY_STATE"
     QUESTION_PUSH = "QUESTION_PUSH"
+    ANSWER_PROGRESS = "ANSWER_PROGRESS"
     SCORE_SYNC = "SCORE_SYNC"
     GAME_END = "GAME_END"
     ERROR = "ERROR"

@@ -131,3 +131,6 @@ CHANNEL_LAYERS = {
         },
     }
 }
+
+# Seconds the results (SCORE_SYNC) stay up between questions before the next one is pushed.
+TRIVIA_REVEAL_SECONDS = env.float("TRIVIA_REVEAL_SECONDS", default=5.0)

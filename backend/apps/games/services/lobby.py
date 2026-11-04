@@ -137,6 +137,8 @@ def start_game(code: str) -> None:
             raise ProtocolError("invalid_state", "The game has already started.")
         if not game.players.filter(is_kicked=False, is_connected=True).exists():
             raise ProtocolError("not_enough_players", "Wait for at least one player to join.")
+        if not game.quiz.questions.exists():
+            raise ProtocolError("empty_quiz", "This quiz has no questions yet.")
         game.status = GameSession.Status.IN_PROGRESS
         game.started_at = timezone.now()
         game.save(update_fields=["status", "started_at"])
