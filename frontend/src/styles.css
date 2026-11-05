@@ -4,6 +4,9 @@
   background: #f4f2ff;
   --accent: #5b3df5;
   --danger: #b3261e;
+  /* Form-control borders and focus rings need 3:1 against the page (WCAG 1.4.11). */
+  --border-strong: #7a75a1;
+  --focus: #1c1b29;
 }
 body { margin: 0; }
 main { max-width: 28rem; margin: 0 auto; padding: 2rem 1rem; }
@@ -13,24 +16,24 @@ main { max-width: 28rem; margin: 0 auto; padding: 2rem 1rem; }
 }
 .auth-card h1 { margin: 0; font-size: 1.5rem; }
 .field { display: grid; gap: 0.25rem; }
-.field input { padding: 0.6rem; border: 1px solid #b9b5d6; border-radius: 8px; font: inherit; }
+.field input { padding: 0.6rem; border: 1px solid var(--border-strong); border-radius: 8px; font: inherit; }
 .field input[aria-invalid="true"] { border-color: var(--danger); }
 .field-error, .form-error { color: var(--danger); font-size: 0.875rem; margin: 0; padding: 0; list-style: none; }
 .form-error { padding: 0.6rem; background: #fdecea; border-radius: 8px; }
-.role-picker { display: grid; gap: 0.5rem; border: 1px solid #b9b5d6; border-radius: 8px; }
+.role-picker { display: grid; gap: 0.5rem; border: 1px solid var(--border-strong); border-radius: 8px; }
 button { font: inherit; padding: 0.6rem 1rem; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
 button:disabled { opacity: 0.6; cursor: wait; }
-button:focus-visible, input:focus-visible { outline: 3px solid #ffb703; outline-offset: 2px; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .link-button { background: none; color: var(--accent); padding: 0; text-decoration: underline; }
 .switch-mode { margin: 0; text-align: center; }
 
 /* ---- quiz authoring (Phase 2) ---- */
 main.wide { max-width: 48rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.field textarea { padding: 0.6rem; border: 1px solid #b9b5d6; border-radius: 8px; font: inherit; resize: vertical; }
+.field textarea { padding: 0.6rem; border: 1px solid var(--border-strong); border-radius: 8px; font: inherit; resize: vertical; }
 .field textarea[aria-invalid="true"] { border-color: var(--danger); }
-.field textarea:focus-visible { outline: 3px solid #ffb703; outline-offset: 2px; }
-.field-error:focus-visible { outline: 3px solid #ffb703; outline-offset: 2px; }
+.field textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.field-error:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .panel { display: grid; gap: 1rem; padding: 1.25rem; margin-bottom: 1rem; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgb(0 0 0 / 8%); }
 .check { display: flex; gap: 0.5rem; align-items: center; }
 .field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1rem; }
@@ -38,7 +41,7 @@ main.wide { max-width: 48rem; }
 .question-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .question-header h3 { margin: 0; }
 .toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-.choices { display: grid; gap: 0.75rem; border: 1px solid #b9b5d6; border-radius: 8px; padding: 0.75rem; }
+.choices { display: grid; gap: 0.75rem; border: 1px solid var(--border-strong); border-radius: 8px; padding: 0.75rem; }
 .choice-row { display: grid; grid-template-columns: auto 1fr auto; gap: 0.75rem; align-items: start; }
 .choice-row input[type="radio"] { margin-top: 0.8rem; }
 .choice-row .field { margin: 0; }
@@ -46,11 +49,11 @@ main.wide { max-width: 48rem; }
 button.secondary, a.button.secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
 button.danger { background: var(--danger); }
 a.button { display: inline-block; padding: 0.6rem 1rem; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; font: inherit; }
-a.button:focus-visible { outline: 3px solid #ffb703; outline-offset: 2px; }
+a.button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .form-actions { display: flex; gap: 1rem; align-items: center; margin-top: 1.5rem; }
 .page-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .search { margin: 1rem 0; }
-.search input { padding: 0.6rem; border: 1px solid #b9b5d6; border-radius: 8px; font: inherit; }
+.search input { padding: 0.6rem; border: 1px solid var(--border-strong); border-radius: 8px; font: inherit; }
 .quiz-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
 .quiz-card { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.25rem; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgb(0 0 0 / 8%); }
 .quiz-card h2 { margin: 0 0 0.25rem; font-size: 1.15rem; }
@@ -83,7 +86,7 @@ main.lobby { display: grid; gap: 1rem; align-content: start; }
 .question-live { display: grid; gap: 0.75rem; }
 .question-live h2 { margin: 0; font-size: 1.5rem; overflow-wrap: anywhere; }
 .answer-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
-.answer { display: flex; align-items: center; gap: 0.75rem; width: 100%; min-height: 4rem; padding: 0.75rem 1rem; box-sizing: border-box; text-align: left; background: #fff; color: inherit; border: 2px solid #b9b5d6; border-radius: 12px; font: inherit; }
+.answer { display: flex; align-items: center; gap: 0.75rem; width: 100%; min-height: 4rem; padding: 0.75rem 1rem; box-sizing: border-box; text-align: left; background: #fff; color: inherit; border: 2px solid var(--border-strong); border-radius: 12px; font: inherit; }
 button.answer { cursor: pointer; }
 button.answer:disabled { cursor: default; opacity: 1; }
 .answer-letter { display: grid; place-items: center; flex: none; width: 2rem; height: 2rem; border-radius: 8px; background: #e6e3f7; font-weight: 700; }
@@ -135,3 +138,15 @@ button.answer:disabled { cursor: default; opacity: 1; }
 .pick-bar { grid-column: 1 / -1; height: 0.5rem; background: #e6e3f7; border-radius: 999px; overflow: hidden; }
 .pick-bar span { display: block; height: 100%; background: var(--accent); }
 .pick.correct .pick-bar span { background: #15803d; }
+
+/* ---- accessibility pass (Phase 6) ---- */
+.skip-link { position: absolute; left: 0.5rem; top: -4rem; z-index: 100; padding: 0.6rem 1rem; border-radius: 8px; background: #fff; color: var(--accent); font-weight: 700; }
+.skip-link:focus { top: 0.5rem; }
+/* <main> is focused by code on navigation (and by the skip link); a ring on the whole page is noise. */
+main:focus { outline: none; }
+a:focus-visible, select:focus-visible, summary:focus-visible, [tabindex="-1"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.question-live h2:focus { outline: none; }
+.toast a:focus-visible { outline-color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

@@ -3,6 +3,8 @@ import { Route, Routes, useLocation } from "react-router-dom";
 import { restoreSession } from "@/api/auth";
 import RequireHost from "@/components/auth/RequireHost";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
+import RouteAnnouncer from "@/components/common/RouteAnnouncer";
+import SkipLink from "@/components/common/SkipLink";
 import Toaster from "@/components/common/Toaster";
 import HistoryPage from "@/pages/HistoryPage";
 import HomePage from "@/pages/HomePage";
@@ -27,7 +29,9 @@ export default function App() {
   if (!ready) {
     return (
       <>
-        <p role="status">Loading…</p>
+        <main>
+          <p role="status">Loading…</p>
+        </main>
         <Toaster />
       </>
     );
@@ -35,6 +39,7 @@ export default function App() {
 
   return (
     <>
+      <SkipLink />
       {/* Keyed by path: moving to another page remounts the boundary and clears a crash. */}
       <ErrorBoundary key={pathname}>
         <Routes>
@@ -50,6 +55,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </ErrorBoundary>
+      <RouteAnnouncer />
       <Toaster />
     </>
   );

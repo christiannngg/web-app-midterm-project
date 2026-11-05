@@ -6,6 +6,7 @@ import CountdownBar from "@/components/game/CountdownBar";
 import Leaderboard from "@/components/game/Leaderboard";
 import Podium from "@/components/game/Podium";
 import QuestionCard from "@/components/game/QuestionCard";
+import TimeAnnouncer from "@/components/game/TimeAnnouncer";
 import HostControls from "@/components/host/HostControls";
 import ConnectionBanner from "@/components/lobby/ConnectionBanner";
 import JoinCode from "@/components/lobby/JoinCode";
@@ -15,6 +16,7 @@ import { useGameSocket } from "@/hooks/useGameSocket";
 import { useAuthStore } from "@/store/authStore";
 import { useGameStore } from "@/store/gameStore";
 import type { Game } from "@/types/api";
+import { timeWarning } from "@/utils/announce";
 
 // Stable on purpose: a new object each render would make the socket hook reconnect.
 const HOST_SOCKET_OPTIONS = { refreshToken: getValidAccessToken };
@@ -114,6 +116,9 @@ export default function HostPage() {
             remainingMs={countdown.remainingMs}
             totalMs={countdown.totalMs}
             state={countdown.state}
+          />
+          <TimeAnnouncer
+            message={timeWarning(countdown.state, countdown.remainingMs, question.timeLimitSeconds)}
           />
           <QuestionCard
             question={question}

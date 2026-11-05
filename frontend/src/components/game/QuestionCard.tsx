@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { QuestionPayload } from "@/types/ws";
 
 export interface QuestionCardProps {
@@ -25,12 +26,23 @@ export default function QuestionCard({
   onSelect,
   locked = false,
 }: QuestionCardProps) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const interactive = onSelect !== undefined;
+  // A new question replaces the old one in place, which a screen reader would never notice.
+  // Players get focus on the question (so it is read out); the host's read-only screen does not.
+  // Keyed on the question id, so a reconnect that re-sends the same question doesn't steal focus.
+  useEffect(() => {
+    if (interactive) headingRef.current?.focus();
+  }, [question.id, interactive]);
+
   return (
     <section className="question-live" aria-labelledby="question-text">
       <p className="meta">
         Question {question.index + 1} of {question.total}
       </p>
-      <h2 id="question-text">{question.text}</h2>
+      <h2 id="question-text" ref={headingRef} tabIndex={-1}>
+        {question.text}
+      </h2>
       <ul className="answer-grid">
         {question.choices.map((choice, i) => {
           const picked = choice.id === selectedChoiceId;

@@ -4,6 +4,7 @@ import CountdownBar from "@/components/game/CountdownBar";
 import Leaderboard from "@/components/game/Leaderboard";
 import Podium from "@/components/game/Podium";
 import QuestionCard from "@/components/game/QuestionCard";
+import TimeAnnouncer from "@/components/game/TimeAnnouncer";
 import ConnectionBanner from "@/components/lobby/ConnectionBanner";
 import JoinCode from "@/components/lobby/JoinCode";
 import PlayerList from "@/components/lobby/PlayerList";
@@ -12,6 +13,7 @@ import { useGameSocket } from "@/hooks/useGameSocket";
 import { useGameStore } from "@/store/gameStore";
 import { notify } from "@/store/toastStore";
 import { CLOSE_CODE } from "@/types/ws";
+import { timeWarning } from "@/utils/announce";
 import { clearPlayerSession, loadPlayerSession } from "@/utils/playerSession";
 
 // Smart container: waiting, answering, results
@@ -101,6 +103,7 @@ export default function PlayPage() {
   if (status === "IN_PROGRESS") {
     return (
       <main className="wide lobby">
+        <h1 className="sr-only">Trivia game {code}</h1>
         <ConnectionBanner state={connectionState} closeCode={closeCode} onRetry={reconnectNow} />
         {lastError && (
           <p role="alert" className="form-error">
@@ -113,6 +116,9 @@ export default function PlayPage() {
               remainingMs={countdown.remainingMs}
               totalMs={countdown.totalMs}
               state={countdown.state}
+            />
+            <TimeAnnouncer
+              message={timeWarning(countdown.state, countdown.remainingMs, question.timeLimitSeconds)}
             />
             <QuestionCard
               question={question}

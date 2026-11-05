@@ -70,7 +70,7 @@ player who is back online as offline. `answer_progress` counts only connected pl
 **Errors.** The axios interceptor (`api/client.ts`) reports failures: 400 with field errors is left
 to the form (inline, next to the input); 400 without fields, 403, 404, 429, 5xx and "no response"
 become toasts (`store/toastStore.ts`, rendered by `<Toaster>` in an `aria-live` region); a 401 is
-retried once after a token refresh, and only a *rejected* refresh token signs the user out (a network
+retried once after a token refresh, and only a _rejected_ refresh token signs the user out (a network
 blip does not). Requests whose caller shows the error itself pass `inline: true`. Render crashes are
 caught by `ErrorBoundary` (per page, plus an outer one); unknown URLs hit `NotFoundPage`.
 
@@ -79,3 +79,39 @@ caught by `ErrorBoundary` (per page, plus an outer one); unknown URLs hit `NotFo
 breakdown, 409 until finished) and `GET /api/games/<code>/export/` (CSV, one row per player per
 question, formulas in guest nicknames defused). Another host's game is a 404. Results read the quiz
 live, so deleting a quiz deletes its games, and editing a question changes how old results read.
+
+## Polish (Phase 6)
+
+**Tests.** Backend: `pytest` (in-memory Channels layer, Postgres for the threaded concurrency
+tests). Frontend: `npm test` (Vitest + Testing Library, jsdom). The socket hook is tested against a
+fake `WebSocket` that the test opens, feeds and kills, so reconnect, backoff, heartbeat and the
+refusal codes (4401/4403/4404/4410) are checked without a server. The API client is tested with a
+fake axios adapter: which status becomes a toast and which is left to the form, and the
+refresh-once-and-replay path on a 401.
+
+**Accessibility.** Beyond labelled inputs, `aria-describedby` errors, live regions and real tables:
+a skip link; `RouteAnnouncer` sets the page title and focuses `<main>` on every navigation (a
+single-page app never reloads, so a screen reader would not otherwise know the page changed);
+`QuestionCard` focuses the question heading for players when a new question arrives (keyed on the
+question id, so a reconnect that re-sends the same question does not steal focus);
+`TimeAnnouncer` speaks "10 seconds left" and "Last 5 seconds" instead of the timer ticking aloud;
+form-control borders and focus rings meet 3:1 contrast; motion is reduced under
+`prefers-reduced-motion`.
+
+**Seed data.** `python manage.py seed_demo [--reset]` (see the README). It writes finished games
+through the same tables and the same `compute_points` as live play.
+
+## Rubric check (Week 6)
+
+| Dimension                 | Check                                                                                                                                                                                                  | Result   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| Backend and DB (20)       | FK, Many-to-Many (`Quiz.tags`) and One-to-One (`PlayerProfile`) are all used; viewset and history querysets use `select_related`/`prefetch_related`, with query-count tests; serializers validate      | Pass     |
+| API and auth (20)         | DRF viewsets on `DefaultRouter`; SimpleJWT with refresh; `IsHost` on create/history/results/export; another host's game is a 404                                                                       | Pass     |
+| React and TypeScript (20) | strict mode, `no-explicit-any` is an ESLint error and none is used; pages are smart, `components/*` are presentational; every WebSocket frame is parsed into a typed `ServerMessage`                   | Pass     |
+| State and API client (15) | components subscribe with selectors (no bare `useXStore()`); every network call lives in `src/api`                                                                                                     | Pass     |
+| Errors and UI (15)        | 400/401/403/404/500 each have a message (tested end to end in `api/client.test.ts` and `apps/tests/test_common_exceptions.py`); scoring in `transaction.atomic`; keyboard and screen-reader pass above | Pass     |
+| Organization and Git (10) | `/backend` + `/frontend`; `.env` ignored; both `.env.example` files list every variable the code reads; commit history is one commit per phase                                                         | See note |
+
+Note: the roadmap asks for small commits as each step lands; the history so far is one commit per
+phase, so splitting the Phase 6 work into several commits (tests, accessibility, seed, docs) would
+help that score.
