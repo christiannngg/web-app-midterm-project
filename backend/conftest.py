@@ -1,5 +1,6 @@
 import pytest
 
+from apps.games.consumers import game as game_consumer
 from apps.games.services import timer
 
 
@@ -13,6 +14,14 @@ def in_memory_channel_layer(settings):
 def fast_reveal(settings):
     """Keep the pause between questions short so a full game finishes in well under a second."""
     settings.TRIVIA_REVEAL_SECONDS = 0.05
+
+
+@pytest.fixture(autouse=True)
+def forget_open_sockets():
+    """The consumer counts each player's open sockets in a module-level dict; start clean."""
+    game_consumer._open_sockets.clear()
+    yield
+    game_consumer._open_sockets.clear()
 
 
 @pytest.fixture(autouse=True)

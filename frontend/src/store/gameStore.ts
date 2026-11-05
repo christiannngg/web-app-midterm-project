@@ -126,6 +126,14 @@ export const useGameStore = create<GameState>((set) => ({
           revealed: false,
         });
         return;
+      case "YOUR_ANSWER":
+        // Reconnect: the server remembers what we picked. Ignore it if it's for another question.
+        set((s) =>
+          s.question?.id === msg.payload.questionId ? { myChoiceId: msg.payload.choiceId } : {},
+        );
+        return;
+      case "PONG":
+        return; // the socket hook only needs to know *something* arrived
       case "ERROR":
         set({ lastError: msg.payload });
         return;

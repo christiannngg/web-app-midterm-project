@@ -99,6 +99,12 @@ export function parseServerMessage(raw: unknown): ServerMessage | null {
       return isArrayOf(p.leaderboard, isPlayer)
         ? { type: "GAME_END", payload: { leaderboard: p.leaderboard } }
         : null;
+    case "YOUR_ANSWER":
+      return isNumber(p.questionId) && isNumber(p.choiceId)
+        ? { type: "YOUR_ANSWER", payload: { questionId: p.questionId, choiceId: p.choiceId } }
+        : null;
+    case "PONG":
+      return { type: "PONG", payload: {} };
     case "ERROR":
       return isString(p.code) && isString(p.detail)
         ? { type: "ERROR", payload: { code: p.code, detail: p.detail } }

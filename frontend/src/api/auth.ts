@@ -1,18 +1,22 @@
 import { useAuthStore } from "@/store/authStore";
+import { notify } from "@/store/toastStore";
 import type { RegisterPayload, TokenPair, User } from "@/types/api";
-import { http, refreshAccessToken } from "./client";
+import { http, isAuthRejection, normalizeError, refreshAccessToken } from "./client";
 
 export async function login(username: string, password: string): Promise<TokenPair> {
   const { data } = await http.post<TokenPair>(
     "/auth/login/",
     { username, password },
-    { skipAuth: true },
+    { skipAuth: true, inline: true },
   );
   return data;
 }
 
 export async function register(payload: RegisterPayload): Promise<User> {
-  const { data } = await http.post<User>("/auth/register/", payload, { skipAuth: true });
+  const { data } = await http.post<User>("/auth/register/", payload, {
+    skipAuth: true,
+    inline: true,
+  });
   return data;
 }
 
@@ -54,8 +58,13 @@ export function restoreSession(): Promise<void> {
         const user = await fetchMe();
         setSession(user, access, useAuthStore.getState().refresh ?? refresh);
       }
-    } catch {
-      useAuthStore.getState().logout(); // expired/invalid refresh token -> signed out
+    } catch (err) {
+      if (isAuthRejection(err)) {
+        useAuthStore.getState().logout(); // expired/invalid refresh token -> signed out
+      } else {
+        // Offline or the server is down: we can't tell, so keep the saved session and say so.
+        notify.error(normalizeError(err).detail);
+      }
     } finally {
       setReady();
     }

@@ -107,3 +107,31 @@ button.answer:disabled { cursor: default; opacity: 1; }
 .place-1 { order: 2; padding-block: 2rem; background: #fff8e1; }
 .place-2 { order: 1; }
 .place-3 { order: 3; }
+
+/* ---- resilience (Phase 5) ---- */
+.toaster { position: fixed; right: 1rem; bottom: 1rem; z-index: 50; display: grid; gap: 0.5rem; width: min(24rem, calc(100vw - 2rem)); }
+.toast { display: flex; align-items: start; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 10px; background: #1c1b29; color: #fff; box-shadow: 0 4px 16px rgb(0 0 0 / 25%); }
+.toast.error { background: var(--danger); }
+.toast.success { background: #166534; }
+.toast span { overflow-wrap: anywhere; }
+.toast-close { flex: none; padding: 0 0.4rem; background: transparent; color: inherit; font-size: 1.25rem; line-height: 1.2; }
+.toast-close:focus-visible { outline-color: #fff; }
+.error-detail { padding: 0.75rem; background: #fdecea; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
+.connection-banner { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 0.6rem 0.9rem; border-radius: 8px; background: #fff4d6; color: #5c3d00; }
+.connection-banner p { margin: 0; }
+.connection-banner button { padding: 0.3rem 0.8rem; }
+
+/* ---- history and results ---- */
+.results-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgb(0 0 0 / 8%); overflow: hidden; }
+.results-table th, .results-table td { padding: 0.6rem 0.9rem; text-align: left; border-bottom: 1px solid #e6e3f7; }
+.results-table thead th { background: #f0eefc; font-size: 0.85rem; }
+.results-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.breakdown { list-style: none; margin: 0; padding: 0; }
+.breakdown h3 { margin: 0; overflow-wrap: anywhere; }
+.pick-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.pick { display: grid; grid-template-columns: 1fr auto; gap: 0.15rem 1rem; }
+.pick-text { overflow-wrap: anywhere; }
+.pick-count { color: #5f5b7a; font-variant-numeric: tabular-nums; }
+.pick-bar { grid-column: 1 / -1; height: 0.5rem; background: #e6e3f7; border-radius: 999px; overflow: hidden; }
+.pick-bar span { display: block; height: 100%; background: var(--accent); }
+.pick.correct .pick-bar span { background: #15803d; }

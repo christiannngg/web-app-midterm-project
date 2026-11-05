@@ -9,6 +9,7 @@ Client -> Server:
     HOST_START     {}                         host: leave the lobby and begin the game
     ANSWER_SUBMIT  {questionId, choiceId}     player: answer the open question (once)
     HOST_NEXT      {}                         host: end the open question / skip the results pause
+    PING           {}                         anyone: heartbeat; the server answers PONG
 Server -> Client:
     LOBBY_STATE    {players: [...], status, locked}   sent on connect and after every change
     QUESTION_PUSH  {id, text, choices: [{id, text}], timeLimitSeconds, startedAtMs,
@@ -17,7 +18,14 @@ Server -> Client:
     SCORE_SYNC     {leaderboard: [{id, nickname, score}], correctChoiceId,
                     awarded: [{playerId, points}]}    the question closed; reveal + new scores
     GAME_END       {leaderboard: [...]}               final standings (podium = first three)
+    YOUR_ANSWER    {questionId, choiceId}     reconnect only: the choice this player locked in
+    PONG           {}                         answer to PING
     ERROR          {code, detail}             the socket stays open
+
+Reconnect / restore (Phase 5): every new socket gets LOBBY_STATE first, then, if the game is
+running or finished, enough events to redraw the screen it missed -- QUESTION_PUSH (same
+startedAtMs, fresh serverNowMs), YOUR_ANSWER (players), then ANSWER_PROGRESS while the
+question is open or SCORE_SYNC while its results show; GAME_END once the game is over.
 
 Close codes (the browser sees these in `CloseEvent.code`):
     4401 unauthorized (missing/invalid token)   4403 forbidden (not this game's host/player)
@@ -34,6 +42,7 @@ class ClientAction(StrEnum):
     HOST_START = "HOST_START"
     ANSWER_SUBMIT = "ANSWER_SUBMIT"
     HOST_NEXT = "HOST_NEXT"
+    PING = "PING"
 
 
 class ServerEvent(StrEnum):
@@ -42,6 +51,8 @@ class ServerEvent(StrEnum):
     ANSWER_PROGRESS = "ANSWER_PROGRESS"
     SCORE_SYNC = "SCORE_SYNC"
     GAME_END = "GAME_END"
+    YOUR_ANSWER = "YOUR_ANSWER"
+    PONG = "PONG"
     ERROR = "ERROR"
 
 

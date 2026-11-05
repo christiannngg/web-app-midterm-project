@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import "./styles.css";
 
 const container = document.getElementById("root");
@@ -9,8 +10,11 @@ if (!container) throw new Error("Root element not found");
 
 createRoot(container).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    {/* Outermost net: catches a crash in App itself, which the per-page boundary can't. */}
+    <ErrorBoundary>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ErrorBoundary>
   </StrictMode>,
 );

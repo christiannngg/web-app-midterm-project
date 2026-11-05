@@ -3,6 +3,8 @@ import { CLOSE_CODE, type ConnectionState } from "@/types/ws";
 interface Props {
   state: ConnectionState;
   closeCode: number | null;
+  /** Skip the wait and reconnect right now (only offered while reconnecting). */
+  onRetry?: () => void;
 }
 
 function rejectedMessage(closeCode: number | null): string {
@@ -17,12 +19,24 @@ function rejectedMessage(closeCode: number | null): string {
 }
 
 /** Presentational: says what the socket is doing when it isn't happily open. */
-export default function ConnectionBanner({ state, closeCode }: Props) {
+export default function ConnectionBanner({ state, closeCode, onRetry }: Props) {
   if (state === "connecting") {
     return (
       <p role="status" className="muted">
         Connecting…
       </p>
+    );
+  }
+  if (state === "reconnecting") {
+    return (
+      <div role="status" className="connection-banner">
+        <p>Connection lost. Reconnecting… the game will pick up where it is.</p>
+        {onRetry && (
+          <button type="button" className="secondary" onClick={onRetry}>
+            Try now
+          </button>
+        )}
+      </div>
     );
   }
   if (state === "rejected") {
@@ -32,12 +46,5 @@ export default function ConnectionBanner({ state, closeCode }: Props) {
       </p>
     );
   }
-  if (state === "closed") {
-    return (
-      <p role="alert" className="form-error">
-        Connection lost. Refresh the page to reconnect.
-      </p>
-    );
-  }
-  return null;
+  return null; // open, idle, kicked (the page says so itself) and closed (the game is over)
 }

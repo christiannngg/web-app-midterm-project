@@ -54,7 +54,9 @@ export type ClientMessage =
   | { type: "HOST_LOCK"; payload: { locked: boolean } }
   | { type: "HOST_START"; payload: Record<string, never> }
   | { type: "ANSWER_SUBMIT"; payload: { questionId: number; choiceId: number } }
-  | { type: "HOST_NEXT"; payload: Record<string, never> };
+  | { type: "HOST_NEXT"; payload: Record<string, never> }
+  /** Heartbeat: the server answers PONG, so a silently dead connection gets noticed. */
+  | { type: "PING"; payload: Record<string, never> };
 
 // ---- Server -> Client -------------------------------------------------------
 export type ServerMessage =
@@ -68,6 +70,9 @@ export type ServerMessage =
       payload: { leaderboard: Player[]; correctChoiceId: number | null; awarded: Award[] };
     }
   | { type: "GAME_END"; payload: { leaderboard: Player[] } }
+  /** Sent on reconnect only: the choice this player had already locked in on that question. */
+  | { type: "YOUR_ANSWER"; payload: { questionId: number; choiceId: number } }
+  | { type: "PONG"; payload: Record<string, never> }
   | { type: "ERROR"; payload: { code: string; detail: string } };
 
 // ---- Connection -------------------------------------------------------------
@@ -82,6 +87,14 @@ export const CLOSE_CODE = {
 
 /**
  * idle: not connecting (no token yet)   rejected: server refused the handshake (see closeCode)
- * kicked: the host removed this player   closed: dropped or closed normally
+ * kicked: the host removed this player   closed: over for good (the game finished)
+ * reconnecting: the connection dropped and the hook is retrying with backoff
  */
-export type ConnectionState = "idle" | "connecting" | "open" | "closed" | "rejected" | "kicked";
+export type ConnectionState =
+  | "idle"
+  | "connecting"
+  | "open"
+  | "reconnecting"
+  | "closed"
+  | "rejected"
+  | "kicked";

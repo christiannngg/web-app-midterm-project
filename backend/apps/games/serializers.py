@@ -1,6 +1,6 @@
 """Serializers for the lobby REST endpoints (`/api/games/`).
 
-Leaderboard serializer arrives with live scoring in Phase 4.
+Host-only history rows (`GET /api/games/history/`) are at the bottom.
 """
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
@@ -94,3 +94,36 @@ class JoinSerializer(serializers.Serializer):
             "player": {"id": player.pk, "nickname": player.nickname},
             "player_token": make_player_token(player),
         }
+
+
+class GameHistorySerializer(serializers.ModelSerializer):
+    """One row of the host's history list. Expects `services.history.finished_games` rows
+    (annotated with `question_total`, players prefetched into `standings`)."""
+
+    quiz_title = serializers.CharField(source="quiz.title", read_only=True)
+    question_count = serializers.IntegerField(source="question_total", read_only=True)
+    player_count = serializers.SerializerMethodField()
+    winner = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GameSession
+        fields = [
+            "id",
+            "code",
+            "quiz_title",
+            "question_count",
+            "player_count",
+            "winner",
+            "started_at",
+            "ended_at",
+        ]
+        read_only_fields = fields
+
+    def get_player_count(self, game: GameSession) -> int:
+        return len(game.standings)
+
+    def get_winner(self, game: GameSession) -> dict | None:
+        if not game.standings:
+            return None
+        top = game.standings[0]
+        return {"nickname": top.nickname, "score": top.score}

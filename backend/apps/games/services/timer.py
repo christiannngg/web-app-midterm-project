@@ -8,11 +8,13 @@ One `GameRunner` asyncio task per running game drives the whole round loop:
 The server owns the clock; browsers only draw a countdown from `startedAtMs`. A question ends
 early when every connected player has answered, or when the host sends HOST_NEXT (skip).
 
-Limits worth knowing (revisit in Phase 5):
+Limits worth knowing:
   * The runner lives in this process's event loop, so run a single Daphne worker. The tasks are
     kept in `_runners`, keyed by join code, so a second HOST_START cannot start a second timer.
-  * If the server restarts mid-game the timer is gone; the DB still says which question was
-    open, so reconnect/restore can re-arm it.
+  * If the server restarts mid-game the timer is gone. The first socket that reconnects calls
+    `start_runner(code, resume=True)`, which re-arms it from the DB (`gameplay.resume_point`):
+    an open question keeps the time it had left, a results pause finishes what is left of it.
+    Time the server spent down counts against the question, so a long outage skips ahead.
 """
 import asyncio
 import logging
@@ -56,17 +58,39 @@ class GameRunner:
 
     # ---- the round loop ----------------------------------------------------------------
 
-    async def run(self) -> None:
+    async def run(self, resume: bool = False) -> None:
         try:
             index = 0
-            while True:
-                question = await database_sync_to_async(gameplay.open_question)(self.code, index)
-                if question is None:
-                    break
-                self.phase = "question"
+            open_left: float | None = None  # seconds left on a question already open in the DB
+            point = (
+                await database_sync_to_async(gameplay.resume_point)(self.code) if resume else None
+            )
+            if point is not None and point.phase == "reveal":
+                self.phase = "reveal"
                 self._wake.clear()
-                await self._broadcast(ServerEvent.QUESTION_PUSH, question)
-                await self._wait(question["timeLimitSeconds"])
+                await self._wait(point.remaining)
+                index = point.index + 1
+            elif point is not None and point.phase == "question":
+                index, open_left = point.index, point.remaining
+
+            while True:
+                if open_left is None:
+                    question = await database_sync_to_async(gameplay.open_question)(
+                        self.code, index
+                    )
+                    if question is None:
+                        break
+                    self.phase = "question"
+                    self._wake.clear()
+                    await self._broadcast(ServerEvent.QUESTION_PUSH, question)
+                    wait_for = question["timeLimitSeconds"]
+                else:
+                    # Resumed mid-question: it is already open, and reconnecting sockets are
+                    # sent it by the consumer, so there is nothing to broadcast.
+                    self.phase = "question"
+                    self._wake.clear()
+                    wait_for, open_left = open_left, None
+                await self._wait(wait_for)
 
                 self.phase = "closing"  # answers are rejected from here on
                 results = await database_sync_to_async(gameplay.close_question)(self.code)
@@ -113,12 +137,19 @@ def get_runner(code: str) -> GameRunner | None:
     return runner if runner and runner.phase != "done" else None
 
 
-def start_runner(code: str) -> bool:
-    """Start the timer for a game. False if one is already running for this code."""
+def start_runner(code: str, resume: bool = False) -> bool:
+    """Start the timer for a game. False if one is already running for this code.
+
+    `resume=True` continues a game that is already IN_PROGRESS from where the DB says it was.
+    The check and the registration happen with no `await` in between, so two sockets
+    reconnecting at the same instant still produce a single timer.
+    """
     if get_runner(code) is not None:
         return False
     runner = GameRunner(code)
-    runner.task = asyncio.get_running_loop().create_task(runner.run(), name=f"game-{code}")
+    runner.task = asyncio.get_running_loop().create_task(
+        runner.run(resume=resume), name=f"game-{code}"
+    )
     _runners[code] = runner
     runner.task.add_done_callback(lambda _task: _forget(code, runner))
     return True

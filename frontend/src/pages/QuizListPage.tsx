@@ -55,8 +55,8 @@ export default function QuizListPage() {
       // Deleting the last quiz on a later page would leave an empty page: step back instead.
       if (data && data.results.length === 1 && page > 1) setPage(page - 1);
       else setReloadKey((k) => k + 1);
-    } catch (err) {
-      setError(normalizeError(err).detail);
+    } catch {
+      // Nothing to add: the API client already showed why it failed (403, 404, 500, offline).
     }
   };
 
@@ -78,9 +78,14 @@ export default function QuizListPage() {
     <main className="wide">
       <header className="page-header">
         <h1>My quizzes</h1>
-        <Link className="button" to="/quizzes/new">
-          New quiz
-        </Link>
+        <div className="toolbar">
+          <Link className="button secondary" to="/history">
+            Game history
+          </Link>
+          <Link className="button" to="/quizzes/new">
+            New quiz
+          </Link>
+        </div>
       </header>
 
       <div className="field search">

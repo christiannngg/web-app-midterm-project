@@ -10,6 +10,7 @@ import PlayerList from "@/components/lobby/PlayerList";
 import { useCountdown } from "@/hooks/useCountdown";
 import { useGameSocket } from "@/hooks/useGameSocket";
 import { useGameStore } from "@/store/gameStore";
+import { notify } from "@/store/toastStore";
 import { CLOSE_CODE } from "@/types/ws";
 import { clearPlayerSession, loadPlayerSession } from "@/utils/playerSession";
 
@@ -17,7 +18,7 @@ import { clearPlayerSession, loadPlayerSession } from "@/utils/playerSession";
 export default function PlayPage() {
   const { code = "" } = useParams<{ code: string }>();
   const session = useMemo(() => loadPlayerSession(code), [code]);
-  const { send, connectionState } = useGameSocket(code, session?.token ?? null);
+  const { send, connectionState, reconnectNow } = useGameSocket(code, session?.token ?? null);
 
   const status = useGameStore((s) => s.status);
   const players = useGameStore((s) => s.players);
@@ -69,22 +70,28 @@ export default function PlayPage() {
   }
 
   const selfId = session.playerId;
-  // One answer per question: lock as soon as we've picked, once time is up, or after the reveal.
-  const locked = myChoiceId !== null || countdown.state !== "running" || revealed;
+  // One answer per question: lock as soon as we've picked, once time is up, after the reveal,
+  // and while offline (an answer sent into a dead connection would look locked in but be lost).
+  const locked =
+    myChoiceId !== null ||
+    countdown.state !== "running" ||
+    revealed ||
+    connectionState !== "open";
   const myRank = leaderboard.findIndex((p) => p.id === selfId) + 1;
   const myPoints = awarded[selfId] ?? 0;
 
   const onSelect = (choiceId: number) => {
     if (!question || locked) return;
-    selectChoice(choiceId);
-    send({ type: "ANSWER_SUBMIT", payload: { questionId: question.id, choiceId } });
+    const sent = send({ type: "ANSWER_SUBMIT", payload: { questionId: question.id, choiceId } });
+    if (sent) selectChoice(choiceId);
+    else notify.error("You're offline, so that answer wasn't sent. Try again once you're back.");
   };
 
   if (status === "FINISHED") {
     return (
       <main className="wide lobby">
         <h1>Game over</h1>
-        <ConnectionBanner state={connectionState} closeCode={closeCode} />
+        <ConnectionBanner state={connectionState} closeCode={closeCode} onRetry={reconnectNow} />
         <Podium players={leaderboard} selfId={selfId} />
         <Link to="/">Play again</Link>
       </main>
@@ -94,7 +101,7 @@ export default function PlayPage() {
   if (status === "IN_PROGRESS") {
     return (
       <main className="wide lobby">
-        <ConnectionBanner state={connectionState} closeCode={closeCode} />
+        <ConnectionBanner state={connectionState} closeCode={closeCode} onRetry={reconnectNow} />
         {lastError && (
           <p role="alert" className="form-error">
             {lastError.detail}
@@ -131,9 +138,11 @@ export default function PlayPage() {
                     : "Not this time. 0 points."
                 : myChoiceId !== null
                   ? "Answer locked in. Waiting for the others…"
-                  : countdown.state === "expired"
-                    ? "Time's up!"
-                    : "Pick an answer"}
+                  : connectionState !== "open"
+                    ? "Reconnecting… you can answer as soon as you're back."
+                    : countdown.state === "expired"
+                      ? "Time's up!"
+                      : "Pick an answer"}
             </p>
             {revealed && (
               <>
@@ -152,7 +161,7 @@ export default function PlayPage() {
   return (
     <main className="lobby">
       <h1>You're in, {session.nickname}!</h1>
-      <ConnectionBanner state={connectionState} closeCode={closeCode} />
+      <ConnectionBanner state={connectionState} closeCode={closeCode} onRetry={reconnectNow} />
       <JoinCode code={code} />
       <p role="status">Waiting for the host to start the game…</p>
       <h2>Players ({players.length})</h2>

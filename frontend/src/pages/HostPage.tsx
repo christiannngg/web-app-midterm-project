@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { getValidAccessToken } from "@/api/client";
 import { getGame } from "@/api/games";
 import CountdownBar from "@/components/game/CountdownBar";
 import Leaderboard from "@/components/game/Leaderboard";
@@ -15,12 +16,15 @@ import { useAuthStore } from "@/store/authStore";
 import { useGameStore } from "@/store/gameStore";
 import type { Game } from "@/types/api";
 
+// Stable on purpose: a new object each render would make the socket hook reconnect.
+const HOST_SOCKET_OPTIONS = { refreshToken: getValidAccessToken };
+
 // Smart container: lobby, start, question control, leaderboard
 export default function HostPage() {
   const { code = "" } = useParams<{ code: string }>();
   // Capture the JWT once: a background token refresh must not tear down the socket.
   const [token] = useState(() => useAuthStore.getState().access);
-  const { send, connectionState } = useGameSocket(code, token);
+  const { send, connectionState, reconnectNow } = useGameSocket(code, token, HOST_SOCKET_OPTIONS);
 
   const status = useGameStore((s) => s.status);
   const locked = useGameStore((s) => s.locked);
@@ -60,7 +64,7 @@ export default function HostPage() {
         <Link to="/quizzes">Back to quizzes</Link>
       </header>
 
-      <ConnectionBanner state={connectionState} closeCode={closeCode} />
+      <ConnectionBanner state={connectionState} closeCode={closeCode} onRetry={reconnectNow} />
       {status === "LOBBY" && <JoinCode code={code} />}
 
       {lastError && (
@@ -97,7 +101,12 @@ export default function HostPage() {
         <>
           <h2>Final results</h2>
           <Podium players={leaderboard} />
-          <Link to="/quizzes">Back to quizzes</Link>
+          <div className="toolbar">
+            <Link className="button" to={`/history/${code}`}>
+              Full results and CSV
+            </Link>
+            <Link to="/quizzes">Back to quizzes</Link>
+          </div>
         </>
       ) : question ? (
         <>

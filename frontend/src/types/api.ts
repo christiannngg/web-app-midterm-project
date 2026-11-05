@@ -126,3 +126,60 @@ export interface JoinGameResponse {
   player: { id: number; nickname: string };
   player_token: string;
 }
+
+// ---- History (backend apps/games/services/history.py) --------------------------------------
+
+/** One row of `GET /games/history/`: a finished game the signed-in host ran. */
+export interface GameHistoryItem {
+  id: number;
+  code: string;
+  quiz_title: string;
+  question_count: number;
+  player_count: number;
+  /** null when nobody played. */
+  winner: { nickname: string; score: number } | null;
+  started_at: string | null;
+  ended_at: string | null;
+}
+
+export interface StandingRow {
+  /** Equal scores share a rank (1, 2, 2, 4). */
+  rank: number;
+  player_id: number;
+  nickname: string;
+  score: number;
+  answered_count: number;
+  correct_count: number;
+}
+
+export interface QuestionResultChoice {
+  id: number;
+  text: string;
+  is_correct: boolean;
+  /** How many players picked this choice. */
+  picked_count: number;
+}
+
+export interface QuestionResult {
+  id: number;
+  /** 1-based position in the quiz. */
+  number: number;
+  text: string;
+  points: number;
+  time_limit_s: number;
+  answered_count: number;
+  correct_count: number;
+  choices: QuestionResultChoice[];
+}
+
+/** `GET /games/<code>/results/` */
+export interface GameResults {
+  code: string;
+  quiz_title: string;
+  started_at: string | null;
+  ended_at: string | null;
+  player_count: number;
+  question_count: number;
+  standings: StandingRow[];
+  questions: QuestionResult[];
+}
