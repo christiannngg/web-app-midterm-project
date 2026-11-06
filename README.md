@@ -23,12 +23,43 @@ TypeScript (strict) + Vite + Zustand + Axios
 | History        | Finished games, per-question results, CSV export (one row per player per question)                             |
 | Accessibility  | Skip link, page titles and focus on navigation, labelled forms, live regions, keyboard-only play               |
 
+## Screenshots
+
+### Hosting
+
+| Quizzes | Quiz editor |
+| ------- | ----------- |
+| ![My quizzes: search, draft/published status, tags, host game](docs/screenshots/02-my-quizzes.png) | ![New quiz form with nested questions and choices](docs/screenshots/05-quiz-editor.png) |
+
+| Lobby, waiting for players | Lobby with a player (kick, lock, start) |
+| -------------------------- | --------------------------------------- |
+| ![Host lobby showing the six-character join code](docs/screenshots/06-host-lobby-empty.png) | ![Host lobby with one player and a Kick button](docs/screenshots/08-host-lobby-player.png) |
+
+### Playing
+
+| Join a game | Waiting for the host |
+| ----------- | -------------------- |
+| ![Join form: game code and nickname](docs/screenshots/01-join-game.png) | ![Player waiting room with the join code](docs/screenshots/07-player-waiting.png) |
+
+| Live question | Answer reveal and standings |
+| ------------- | --------------------------- |
+| ![Timed question with four choices and a countdown bar](docs/screenshots/09-live-question.png) | ![Correct answer, points earned and current place](docs/screenshots/10-answer-reveal.png) |
+
+![Game over screen with the podium](docs/screenshots/11-game-over.png)
+
+### History
+
+| Game history | Results for one game |
+| ------------ | -------------------- |
+| ![List of finished games with winners](docs/screenshots/03-game-history.png) | ![Final standings and per-question breakdown, CSV download](docs/screenshots/04-game-results.png) |
+
 ## Layout
 
 ```txt
 backend/    Django project (config/, apps/accounts, apps/quizzes, apps/games)
 frontend/   React + TS app (Vite); src/api = every network call, src/store = Zustand
-docs/       ARCHITECTURE.md (data model, WS protocol, resilience) and DEMO.md (demo script)
+docs/       ARCHITECTURE.md (data model, WS protocol, resilience), DEMO.md (demo script),
+            screenshots/ (images used in this README)
 docker-compose.yml   Postgres + Redis for local development
 ```
 
